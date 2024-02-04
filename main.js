@@ -60,18 +60,19 @@ var initgame=function(){
         map[w][z][y] = new Array(maplen);
         for(var x=0;x<maplen;x++){
           if(x==0 || x==maplen-1 ||
-             x==0 || x==maplen-1 ||
-             x==0 || x==maplen-1 ||
-             x==0 || x==maplen-1){
+             y==0 || y==maplen-1 ||
+             z==0 || z==maplen-1 ||
+             w==0 || w==maplen-1){
             //wall
             map[w][z][y][x]=0;
           }else{
-            var r2 = ((x-1)/(maplen-2)*2-1)*((x-1)/(maplen-2)*2-1)+
-                     ((y-1)/(maplen-2)*2-1)*((y-1)/(maplen-2)*2-1)+
-                     ((z-1)/(maplen-2)*2-1)*((z-1)/(maplen-2)*2-1)+
-                     ((w-1)/(maplen-2)*2-1)*((w-1)/(maplen-2)*2-1);
+            var r2 =
+              ((x-1+1/2)/(maplen-2)*2-1)*((x-1+1/2)/(maplen-2)*2-1)+
+              ((y-1+1/2)/(maplen-2)*2-1)*((y-1+1/2)/(maplen-2)*2-1)+
+              ((z-1+1/2)/(maplen-2)*2-1)*((z-1+1/2)/(maplen-2)*2-1)+
+              ((w-1+1/2)/(maplen-2)*2-1)*((w-1+1/2)/(maplen-2)*2-1);
             var r4 = r2*r2;
-            if(r4 < 0.1/*3.5*/){ // in circle (tuning for 8^4)
+            if(r4 < 0.5){ // in circle (tuning for 7x7x7x7)
               map[w][z][y][x]=-1;
               count[0]++;
             }else{
@@ -83,8 +84,8 @@ var initgame=function(){
       }
     }
   }
-  //console.log("count[0]="+count[0]);
-  //console.log("count[1]="+count[1]);
+  console.log("count[0]="+count[0]);
+  console.log("count[1]="+count[1]);
   
   //init ball
   nball = 2;
@@ -99,6 +100,8 @@ var initgame=function(){
         var x = Math.random()*2-1;
         q[d] = x;
       }
+      //q=[0,0,0,0];
+      //q=[0,0,1/((maplen-2)/2),0];
       m = q2map(q);
     }while(m!=p);
     var iq = q2iq(q);
@@ -125,15 +128,14 @@ var initgame=function(){
     }while(isover);
 
     //resister
-    ball[b] = new Ball([0,0.5,0,0], v);
-    //ball[b] = new Ball(q, v);
+    ball[b] = new Ball(q, v);
   }
 }
 var q2map=function(q){
   var iq = q2iq(q);
   try{
     if(ndim!=4) throw("ndim must be 4.");
-    return map[iq[0]][iq[1]][iq[2]][iq[3]];
+    return map[iq[3]][iq[2]][iq[1]][iq[0]];
   }catch(e){
     throw(e);
   }
@@ -171,33 +173,43 @@ var map2color  = function(m){
 var ball2color = function(b){
   return map2color(-b);
 }
-/* [sx0, sy0, sx1, sy1] = iq2sq(iq[d]) 
- *  iq[d]     = d-th-dimensional index */
-var iq2sq=function(iq){
-  var sx0 = Math.floor(((iq[0]-1)+(iq[2]-1)*_invmaplen)*_spm);
-  var sy0 = Math.floor(((iq[1]-1)+(iq[3]-1)*_invmaplen)*_spm);
-  var sx1 = Math.floor(sx0 + _spm2);
-  var sy1 = Math.floor(sy0 + _spm2);
+var Conv=function(){
+  this.spm        = canlen/(maplen-2);
+  this.spm2       = canlen/(maplen-2)/(maplen-2);
+  this.invmaplen  =      1/(maplen-2);
+};
+/* sq[dz][dw][0,1,2] = q2sq(q[d])
+ * d = {0,1,2,3} = {x,y,z,w} axis
+ * sq[dz][dw][0] = screen position x  
+ * sq[dz][dw][1] = screen position y
+ * sq[dz][dw][2] = radius weight */
+Conv.prototype.q2sq=function(q){
+  var sw = (q[3]+1)/2*(maplen-2)-0.5;
+  var iw = Math.floor(sw);
+  var ww0 = 1-(sw-iw);
+  var ww1 = 1-ww0;
+  var sz = (q[2]+1)/2*(maplen-2)-0.5;
+  var iz = Math.floor(sz);
+  var wz0 = 1-(sz-iz);
+  var wz1 = 1-wz0;
+  var sx0 = Math.floor((iw  +(q[0]+1)/2)*this.spm);
+  var sy0 = Math.floor((iz  +(q[1]+1)/2)*this.spm);
+  var sx1 = Math.floor((iw+1+(q[0]+1)/2)*this.spm);
+  var sy1 = Math.floor((iz+1+(q[1]+1)/2)*this.spm);
+  return [
+  /*dw\dz:               0 ,                 1 */
+  /*0*/[[sx0, sy0, wz0*ww0],[sx1, sy0, wz1*ww0]],
+  /*0*/[[sx0, sy1, wz0*ww1],[sx1, sy1, wz1*ww1]],
+  ];
+}
+/* [sx0, sy0, sx1, sy1] = conv.iq2sq(iq[d]) 
+ *  iq[d]     = d-th-dimensional index d={0,1,2,3}={x,y,z,w} */
+Conv.prototype.iq2sq=function(iq){
+  var sx0 = Math.floor(((iq[2]-1)+(iq[0]-1)*this.invmaplen)*this.spm);
+  var sy0 = Math.floor(((iq[3]-1)+(iq[1]-1)*this.invmaplen)*this.spm);
+  var sx1 = Math.floor(sx0 + this.spm2);
+  var sy1 = Math.floor(sy0 + this.spm2);
   return [sx0,sy0,sx1,sy1];
-}
-var iq2sq_init=function(){
-  _spm        = canlen/(maplen-2);
-  _spm2       = canlen/(maplen-2)/(maplen-2);
-  _invmaplen  =      1/(maplen-2);
-}
-var _spm;
-var _spm2;
-var _invmaplen;
-var q2sq=function(q){
-  //wrong
-  // q[0], q[1] is affect to naibunten
-  var sx = Math.floor(((q[0]+1)/2+(q[2])/2*_invmaplen)*canlen);
-  var sy = Math.floor(((q[1]+1)/2+(q[3])/2*_invmaplen)*canlen);
-  return [sx,sy];
-}
-var q2sq_init=function(){
-  _spm        = canlen/(maplen-2);
-  _invmaplen  =      1/(maplen-2);
 }
 //init
 var initdraw=function(){
@@ -212,7 +224,7 @@ var procdraw = function(){
   ctx.fillRect  (0,0,can.width, can.height);
 
   //block
-  iq2sq_init();
+  var conv=new Conv();
   blocksize0 = canlen/((maplen-2)*(maplen-2));
   blocksize1 = canlen/(maplen-2);
   for(var w=1;w<maplen-1;w++){
@@ -220,7 +232,7 @@ var procdraw = function(){
       for(var y=1;y<maplen-1;y++){
         for(var x=1;x<maplen-1;x++){
           var m  = map[w][z][y][x];
-          var sq = iq2sq([w,z,y,x]);
+          var sq = conv.iq2sq([x,y,z,w]);
           ctx.fillStyle = map2color(m);
           ctx.fillRect(sq[0],sq[1],blocksize0, blocksize0);
         }
@@ -230,25 +242,28 @@ var procdraw = function(){
   for(var w=1;w<maplen-1;w++){
     for(var z=1;z<maplen-1;z++){
       ctx.strokeStyle = "black";
-      var sq = iq2sq([w,z,1,1]);
+      var sq = conv.iq2sq([1,1,z,w]);
       ctx.strokeRect(sq[0],sq[1],blocksize1, blocksize1);
     }
   }
   //ball
-  q2sq_init();
+  var r = 4;
   for(var b=0;b<nball;b++){
-    var sq = q2sq(ball[b].q);
-    //var sq = q2sq([0,0,0,0]);
-    ctx.beginPath();
-    ctx.fillStyle = ball2color(b);
-    ctx.arc(sq[0], sq[1], 2, 0, Math.PI*2, false);
-    ctx.fill();
+    var sq = conv.q2sq(ball[b].q);
+    console.log("sq="+sq.toString());
+    for(var dw=0;dw<2;dw++){
+      for(var dz=0;dz<2;dz++){
+        ctx.beginPath();
+        ctx.fillStyle = ball2color(b);
+        ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
+        ctx.fill();
 
-    ctx.beginPath();
-    ctx.strokeStyle = "black";
-    ctx.arc(sq[0], sq[1], 2, 0, Math.PI*2, false);
-    ctx.stroke();
-    //console.log("b"+b+"=("+sq[0]+" ,"+sq[1]+")");
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
+        ctx.stroke();
+      }
+    }
   }
 }
 window.onresize = function(){ //browser resize
