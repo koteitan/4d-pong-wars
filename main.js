@@ -1,4 +1,4 @@
-var version = "1.0";
+var version = "1.1";
 //entry point--------------------
 window.onload = function(){
   document.getElementById('version').innerHTML=version;
@@ -51,7 +51,7 @@ Ball.prototype.toString=function(){
 var initgame=function(){
   //init map
   ndim     = 4;
-  maplen   = 8+2;
+  maplen   = 6+2;
 
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
@@ -140,6 +140,12 @@ var initgame=function(){
     }while(isover);
 
     //resister
+    if(v[2]<v[3]){ // if v_z < v_w
+      //swap z and w
+      var tmp=v[3];
+      v[3]   =v[2];
+      v[2]   =tmp;
+    }
     ball[b] = new Ball(q, v);
   }
 }
@@ -318,8 +324,8 @@ var procdraw = function(){
 
   //block
   var conv=new Conv();
-  blocksize0 = canlen/((maplen-2)*(maplen-2));
-  blocksize1 = canlen/(maplen-2);
+  blocksize0 = Math.ceil(canlen/((maplen-2)*(maplen-2)));
+  blocksize1 = Math.ceil(canlen/(maplen-2));
   for(var w=1;w<maplen-1;w++){
     for(var z=1;z<maplen-1;z++){
       for(var y=1;y<maplen-1;y++){
@@ -340,7 +346,7 @@ var procdraw = function(){
     }
   }
   //ball
-  var r = 4;
+  var ball_radius = 16;
   for(var b=0;b<nball;b++){
     var sq = conv.q2sq(ball[b].q);
     //console.log("sq="+sq.toString());
@@ -348,12 +354,12 @@ var procdraw = function(){
       for(var dz=0;dz<2;dz++){
         ctx.beginPath();
         ctx.fillStyle = ball2color(b);
-        ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
+        ctx.arc(sq[dw][dz][0], sq[dw][dz][1], ball_radius*sq[dw][dz][2], 0, Math.PI*2, false);
         ctx.fill();
         if(true){
           ctx.beginPath();
           ctx.strokeStyle = "black";
-          ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
+          ctx.arc(sq[dw][dz][0], sq[dw][dz][1], ball_radius*sq[dw][dz][2], 0, Math.PI*2, false);
           ctx.stroke();
         }
       }
