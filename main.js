@@ -1,4 +1,4 @@
-var version = "1.3";
+var version = "1.4";
 var isdebug = false;
 //entry point--------------------
 window.onload = function(){
@@ -287,7 +287,7 @@ var maplen;
 var reqdraw = true;
 /* map2color(-1 or +1) returns color of map */
 var map2color  = function(m){
-  return ['#8888FF','#88FF88'][(m+1)/2];
+  return ['#FF6666','#66FF66'][(m+1)/2];
 }
 /* map2color(-1 or +1) returns color of ball */
 var ball2color = function(b){
@@ -363,7 +363,7 @@ var procdraw = function(){
   }
   for(var w=1;w<maplen-1;w++){
     for(var z=1;z<maplen-1;z++){
-      ctx.strokeStyle = "black";
+      ctx.strokeStyle = "#FFFFFF";
       var sq = conv.iq2sq([1,1,z,w]);
       ctx.strokeRect(sq[0],sq[1],blocksize1, blocksize1);
     }
@@ -381,7 +381,7 @@ var procdraw = function(){
         ctx.fill();
         if(true){
           ctx.beginPath();
-          ctx.strokeStyle = "black";
+          ctx.strokeStyle = "#333333";
           ctx.arc(sq[dw][dz][0], sq[dw][dz][1], ball_radius*sq[dw][dz][2], 0, Math.PI*2, false);
           ctx.stroke();
         }
