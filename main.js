@@ -46,7 +46,7 @@ var Ball = function(_q, _v){
 var initgame=function(){
   //init map
   ndim     = 4;
-  maplen   = 8+2;
+  maplen   = 7+2;
 
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
@@ -59,15 +59,25 @@ var initgame=function(){
       for(var y=0;y<maplen;y++){
         map[w][z][y] = new Array(maplen);
         for(var x=0;x<maplen;x++){
-          map[w][z][y][x] = 0;
-          var r2 = x*x+y*y+z*z+w*w;
-          var r4 = r2*r2;
-          if(r4 < 12100){ // tuning for 8^4
-            map[w][z][y][x]=-1;
-            count[0]++;
+          if(x==0 || x==maplen-1 ||
+             x==0 || x==maplen-1 ||
+             x==0 || x==maplen-1 ||
+             x==0 || x==maplen-1){
+            //wall
+            map[w][z][y][x]=0;
           }else{
-            map[w][z][y][x]=+1;
-            count[1]++;
+            var r2 = ((x-1)/(maplen-2)*2-1)*((x-1)/(maplen-2)*2-1)+
+                     ((y-1)/(maplen-2)*2-1)*((y-1)/(maplen-2)*2-1)+
+                     ((z-1)/(maplen-2)*2-1)*((z-1)/(maplen-2)*2-1)+
+                     ((w-1)/(maplen-2)*2-1)*((w-1)/(maplen-2)*2-1);
+            var r4 = r2*r2;
+            if(r4 < 0.1/*3.5*/){ // in circle (tuning for 8^4)
+              map[w][z][y][x]=-1;
+              count[0]++;
+            }else{
+              map[w][z][y][x]=+1;
+              count[1]++;
+            }
           }
         }
       }
@@ -83,14 +93,17 @@ var initgame=function(){
     //init q
     var p=b*2-1;
     var q=new Array(ndim);
+    var m;
     do{
       for(var d=0;d<ndim;d++){
         var x = Math.random()*2-1;
         q[d] = x;
       }
-      var m = q2map(q);
+      m = q2map(q);
     }while(m!=p);
-
+    var iq = q2iq(q);
+    console.log("ball("+b+"):m="+m+", p="+p);
+    console.log("iq="+iq.toString());
     //init v
     var v=new Array(ndim);
     do{
@@ -112,7 +125,8 @@ var initgame=function(){
     }while(isover);
 
     //resister
-    ball[b] = new Ball(q, v);
+    ball[b] = new Ball([0,0.5,0,0], v);
+    //ball[b] = new Ball(q, v);
   }
 }
 var q2map=function(q){
@@ -128,7 +142,7 @@ var q2iq=function(q){
   var ndim=q.length;
   var iq=new Array(ndim);
   for(var d=0;d<ndim;d++){
-    iq[d] = Math.floor(q[d]*(maplen/2-1))+(maplen/2-1)+1;
+    iq[d] = Math.floor((q[d]+1)/2*(maplen-2)+1);
   }
   return iq;
 }
@@ -151,7 +165,7 @@ var maplen;
 var reqdraw = true;
 /* map2color(-1 or +1) returns color of map */
 var map2color  = function(m){
-  return ['#CCCCFF','#CCCCFF'][(m+1)/2];
+  return ['#CCCCFF','#FFFFCC'][(m+1)/2];
 }
 /* map2color(-1 or +1) returns color of ball */
 var ball2color = function(b){
@@ -175,8 +189,10 @@ var _spm;
 var _spm2;
 var _invmaplen;
 var q2sq=function(q){
-  var sx = Math.floor(((q[0]+1)/2+(q[2]+1)/2*_invmaplen)*_spm);
-  var sy = Math.floor(((q[1]+1)/2+(q[3]+1)/2*_invmaplen)*_spm);
+  //wrong
+  // q[0], q[1] is affect to naibunten
+  var sx = Math.floor(((q[0]+1)/2+(q[2])/2*_invmaplen)*canlen);
+  var sy = Math.floor(((q[1]+1)/2+(q[3])/2*_invmaplen)*canlen);
   return [sx,sy];
 }
 var q2sq_init=function(){
@@ -197,6 +213,8 @@ var procdraw = function(){
 
   //block
   iq2sq_init();
+  blocksize0 = canlen/((maplen-2)*(maplen-2));
+  blocksize1 = canlen/(maplen-2);
   for(var w=1;w<maplen-1;w++){
     for(var z=1;z<maplen-1;z++){
       for(var y=1;y<maplen-1;y++){
@@ -204,17 +222,33 @@ var procdraw = function(){
           var m  = map[w][z][y][x];
           var sq = iq2sq([w,z,y,x]);
           ctx.fillStyle = map2color(m);
-          ctx.fillRect(sq[0],sq[1],sq[2],sq[3]);
+          ctx.fillRect(sq[0],sq[1],blocksize0, blocksize0);
         }
       }
+    }
+  }
+  for(var w=1;w<maplen-1;w++){
+    for(var z=1;z<maplen-1;z++){
+      ctx.strokeStyle = "black";
+      var sq = iq2sq([w,z,1,1]);
+      ctx.strokeRect(sq[0],sq[1],blocksize1, blocksize1);
     }
   }
   //ball
   q2sq_init();
   for(var b=0;b<nball;b++){
     var sq = q2sq(ball[b].q);
+    //var sq = q2sq([0,0,0,0]);
+    ctx.beginPath();
     ctx.fillStyle = ball2color(b);
-    ctx.arc(sq[0], sq[1], 10, 0, Math.PI*2, true);
+    ctx.arc(sq[0], sq[1], 2, 0, Math.PI*2, false);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.strokeStyle = "black";
+    ctx.arc(sq[0], sq[1], 2, 0, Math.PI*2, false);
+    ctx.stroke();
+    //console.log("b"+b+"=("+sq[0]+" ,"+sq[1]+")");
   }
 }
 window.onresize = function(){ //browser resize
