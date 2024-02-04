@@ -8,15 +8,29 @@ window.onload = function(){
   setInterval(procAll, 1000/framerate); //enter gameloop
 }
 //game loop ------------------
-var framerate  = 24; //[fps]
-var lasttimedraw = 0;
-
-var procAll=function(){
-  procgame();
-  procdraw();
-}
 var gettime = function(){
   return (new Date()).getTime();
+}
+var framerate  = 24; //[fps]
+var t0=0;
+var t1=0;
+var t2=gettime();
+var ela=0;
+var el1=0;
+var el2=0;
+var procAll=function(){
+  t1 = gettime();
+  t0 = t2;
+  procgame();
+  procdraw();
+  t2 = gettime();
+
+  var d=0.9;
+  el1=d*el1+(1-d)*Math.floor((t1-t0));
+  el2=d*el2+(1-d)*Math.floor((t2-t1));
+  ela=d*ela+(1-d)*Math.floor((t1-t0+t2-t1));
+  document.getElementById("debugspan").innerHTML=
+    "("+Math.floor(el1)+", "+Math.floor(el2)+")/"+Math.floor(ela);
 }
 //game -----------------
 var map;
@@ -33,7 +47,6 @@ var initgame=function(){
   //init map
   ndim     = 4;
   maplen   = 8+2;
-  
 
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
@@ -209,7 +222,7 @@ window.onresize = function(){ //browser resize
   var wx = document.documentElement.clientWidth;
   var wy = document.documentElement.clientHeight;
   var cx = [(wx- 10)*0.9, 20].max();
-  var cy = [(wy-250)*0.99-140, 20].max();
+  var cy = [(wy-120)*0.9, 20].max();
   canlen = [cx,cy].min();
   document.getElementById("outcanvas").width = canlen;
   document.getElementById("outcanvas").height= canlen;
