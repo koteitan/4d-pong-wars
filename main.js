@@ -20,16 +20,47 @@ var gettime = function(){
 }
 //game -----------------
 var map;
+var ndim;
+var maplen;
+var nball;
+var ball = new function(_q, _v){
+  this.q = _q;
+  this.v = _v;
+}
 //initMap: make a empty map
-var initgame=function(_unit){
-  unit = _unit;
-  map = new Array(unit);
-  for(var y=0;y<unit;y++){
-    map[y] = new Array(unit);
-    for(var x=0;x<unit;x++){
-      map[y][x]=0;
+var initgame=function(){
+  //init map
+  ndim   = 4;
+  maplen = 8+2;
+  map = new Array(maplen);
+  for(var w=0;w<maplen;w++){
+    map[w] = new Array(maplen);
+    for(var z=0;z<maplen;z++){
+      map[w][z] = new Array(maplen);
+      for(var y=0;y<maplen;y++){
+        map[w][z][y] = new Array(maplen);
+        for(var x=1;x<maplen;x++){
+          map[w][z][y][x] = 0;
+          var r2 = x*x+y*y+z*z+w*w;
+          if(2*Math.PI*r2 < 1/2){
+            map[w][z][y][x]=-1;
+          }else{
+            map[w][z][y][x]=+1;
+          }
+        }
+      }
     }
   }
+  //init ball
+  nball=2;
+}
+var q2map=function(q){
+  var ndim=q.length;
+  var mq=new Array(ndim);
+  for(var d=0;d<ndim;d++){
+    mq[d] = Math.floor(q[d]*(maplen/2-1))+(maplen/2-1)+1;
+  }
+  return mq;
 }
 var procgame=function(){
 }
