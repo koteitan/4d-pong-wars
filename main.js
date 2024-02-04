@@ -1,17 +1,35 @@
-var version = "1.1";
+var version = "1.3";
+var isdebug = false;
 //entry point--------------------
 window.onload = function(){
   document.getElementById('version').innerHTML=version;
+  initbyquery();
   initdraw();
   initgame();
   window.onresize();
   setInterval(procAll, 1000/framerate); //enter gameloop
 }
+var initbyquery=function(){
+  var urlsp = new URLSearchParams(window.location.search);
+  if(urlsp.has('ball')){
+    nball = parseInt(urlsp.get('ball')); //from query
+  }else{
+    nball = 2;
+  }
+  if(urlsp.has('size')){
+    maplen = parseInt(urlsp.get('size'))+2; //from query
+  }else{
+    maplen = 6+2; //default
+  }
+  if(urlsp.has('isdebug')){
+    isdebug = true;
+  }
+}
 //game loop ------------------
 var gettime = function(){
   return (new Date()).getTime();
 }
-var framerate  = 24; //[fps]
+var framerate = 24; //[fps]
 var t0=0;
 var t1=0;
 var t2=gettime();
@@ -29,7 +47,7 @@ var procAll=function(){
   el1=d*el1+(1-d)*Math.floor((t1-t0));
   el2=d*el2+(1-d)*Math.floor((t2-t1));
   ela=d*ela+(1-d)*Math.floor((t1-t0+t2-t1));
-  if(false){
+  if(isdebug){
     document.getElementById("debugspan").innerHTML=
       "("+Math.floor(el1)+", "+Math.floor(el2)+")/"+Math.floor(ela);
   }
@@ -40,19 +58,18 @@ var ndim;
 var maplen;
 var blocklen;
 var nball;
-var Ball = function(_q, _v){
+var Ball = function(_q, _v, _p){
   this.q = _q;
   this.v = _v;
+  this.p = _p;
 }
 Ball.prototype.toString=function(){
-  return "{q="+this.q.toString()+", v="+this.v.toString();
+  return "{q="+this.q.toString()+", v="+this.v.toString()+", p="+this.p+"}";
 }
 //initMap: make a empty map
 var initgame=function(){
   //init map
   ndim     = 4;
-  maplen   = 6+2;
-
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
   var count = [0,0];
@@ -99,12 +116,18 @@ var initgame=function(){
   }
   
   //init ball
-  nball = 2;
-  initv = [0.01, 0.01, 0.05, 0.05];
+  initv = [0.005, 0.005, 0.05, 0.05];
   ball = new Array(nball);
   for(var b=0;b<nball;b++){
+    var p;
+    if(b==0){
+      p = -1;
+    }else if(b==1){
+      p = +1;
+    }else{
+      p = (Math.random() < 0.5)?-1:+1;
+    }
     //init q
-    var p=b*2-1;
     var q=new Array(ndim);
     var m;
     do{
@@ -146,7 +169,7 @@ var initgame=function(){
       v[3]   =v[2];
       v[2]   =tmp;
     }
-    ball[b] = new Ball(q, v);
+    ball[b] = new Ball(q, v, p);
   }
 }
 var q2map=function(q){
@@ -176,7 +199,7 @@ var procgame=function(){
     for(var b=0;b<nball;b++){
       cq1[b] = new Array(ndim);
       ct [b] = new Array(ndim);
-      var p = b*2-1;
+      var p = ball[b].p;
       for(var d=0;d<ndim;d++){
         var v  = ball[b].v[d];
         var q0 = ball[b].q.clone();
@@ -211,20 +234,19 @@ var procgame=function(){
         }
       }
     }
-    //if(minct!=Infinity)console.log("minct="+minct);
+    if(isdebug)if(minct!=Infinity)console.log("minct="+minct);
     if(minct==Infinity){ //there is no collision
       for(var b=0;b<nball;b++){
-        //console.log("ball["+b+"]="+ball[b].toString());
         for(var d=0;d<ndim;d++){
           ball[b].q[d] += ball[b].v[d]*lefttime; //use left time all
         }
+        if(isdebug)console.log("ball["+b+"]="+ball[b].toString());
       }
       lefttime = 0;
       break;
     }else{ // there is a collision
       
       for(var b=0;b<nball;b++){
-        //console.log("ball["+b+"]="+ball[b].toString());
         for(var d=0;d<ndim;d++){
           var dq = ball[b].v[d]*minct;
           if(b==minb && d==mind) dq *= 0.999; //avoid online
@@ -232,6 +254,7 @@ var procgame=function(){
           if(ball[b].q[d] >= +1){ ball[b].q[d] = +1; }
           if(ball[b].q[d] <= -1){ ball[b].q[d] = -1; }
         }
+        if(isdebug)console.log("ball["+b+"]="+ball[b].toString());
       }
 
       //reflect
@@ -240,7 +263,7 @@ var procgame=function(){
       //change
       var iq1 = q2iq(cq1[minb][mind]);
       if(map[iq1[3]][iq1[2]][iq1[1]][iq1[0]] != 0){
-        map[iq1[3]][iq1[2]][iq1[1]][iq1[0]] = minb*2-1;
+        map[iq1[3]][iq1[2]][iq1[1]][iq1[0]] = ball[minb].p;
       }
       lefttime -= minct;
     }
@@ -268,7 +291,7 @@ var map2color  = function(m){
 }
 /* map2color(-1 or +1) returns color of ball */
 var ball2color = function(b){
-  return map2color(-((b*2)-1));
+  return map2color(-ball[b].p);
 }
 var Conv=function(){
   this.spm        = canlen/(maplen-2);
