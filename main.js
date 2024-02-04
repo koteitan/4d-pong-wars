@@ -1,4 +1,4 @@
-var version = "0.01";
+var version = "1.0";
 //entry point--------------------
 window.onload = function(){
   document.getElementById('version').innerHTML=version;
@@ -29,8 +29,10 @@ var procAll=function(){
   el1=d*el1+(1-d)*Math.floor((t1-t0));
   el2=d*el2+(1-d)*Math.floor((t2-t1));
   ela=d*ela+(1-d)*Math.floor((t1-t0+t2-t1));
-  document.getElementById("debugspan").innerHTML=
-    "("+Math.floor(el1)+", "+Math.floor(el2)+")/"+Math.floor(ela);
+  if(false){
+    document.getElementById("debugspan").innerHTML=
+      "("+Math.floor(el1)+", "+Math.floor(el2)+")/"+Math.floor(ela);
+  }
 }
 //game -----------------
 var map;
@@ -42,11 +44,14 @@ var Ball = function(_q, _v){
   this.q = _q;
   this.v = _v;
 }
+Ball.prototype.toString=function(){
+  return "{q="+this.q.toString()+", v="+this.v.toString();
+}
 //initMap: make a empty map
 var initgame=function(){
   //init map
   ndim     = 4;
-  maplen   = 7+2;
+  maplen   = 8+2;
 
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
@@ -66,29 +71,36 @@ var initgame=function(){
             //wall
             map[w][z][y][x]=0;
           }else{
-            var r2 =
-              ((x-1+1/2)/(maplen-2)*2-1)*((x-1+1/2)/(maplen-2)*2-1)+
-              ((y-1+1/2)/(maplen-2)*2-1)*((y-1+1/2)/(maplen-2)*2-1)+
-              ((z-1+1/2)/(maplen-2)*2-1)*((z-1+1/2)/(maplen-2)*2-1)+
-              ((w-1+1/2)/(maplen-2)*2-1)*((w-1+1/2)/(maplen-2)*2-1);
-            var r4 = r2*r2;
-            if(r4 < 0.5){ // in circle (tuning for 7x7x7x7)
-              map[w][z][y][x]=-1;
-              count[0]++;
-            }else{
-              map[w][z][y][x]=+1;
-              count[1]++;
+            if(false){ //radius
+              var r2 =
+                ((x-1+1/2)/(maplen-2)*2-1)*((x-1+1/2)/(maplen-2)*2-1)+
+                ((y-1+1/2)/(maplen-2)*2-1)*((y-1+1/2)/(maplen-2)*2-1)+
+                ((z-1+1/2)/(maplen-2)*2-1)*((z-1+1/2)/(maplen-2)*2-1)+
+                ((w-1+1/2)/(maplen-2)*2-1)*((w-1+1/2)/(maplen-2)*2-1);
+              var r4 = r2*r2;
+              if(r4 < 0.5){ // in circle (tuning for 7x7x7x7)
+                map[w][z][y][x]=-1;
+                count[0]++;
+              }else{
+                map[w][z][y][x]=+1;
+                count[1]++;
+              }
+            }else{ //rectangle
+              if(z>(maplen-2)/2){
+                map[w][z][y][x]=-1;
+              }else{
+                map[w][z][y][x]=+1;
+              }
             }
           }
         }
       }
     }
   }
-  console.log("count[0]="+count[0]);
-  console.log("count[1]="+count[1]);
   
   //init ball
   nball = 2;
+  initv = [0.01, 0.01, 0.05, 0.05];
   ball = new Array(nball);
   for(var b=0;b<nball;b++){
     //init q
@@ -105,22 +117,22 @@ var initgame=function(){
       m = q2map(q);
     }while(m!=p);
     var iq = q2iq(q);
-    console.log("ball("+b+"):m="+m+", p="+p);
-    console.log("iq="+iq.toString());
+    //console.log("ball("+b+"):m="+m+", p="+p);
+    //console.log("iq="+iq.toString());
     //init v
     var v=new Array(ndim);
     do{
       var v2 = 0;
       for(var d=0;d<ndim;d++){
-        v[q] = Math.random()*2-1;
-        v2  += v[q];
+        v[d] = Math.random()*2-1;
+        v2  += v[d]*v[d];
       }
       var av = Math.sqrt(v2);
       var limit = blocklen*framerate/100;
       var isover = false;
       for(var d=0;d<ndim;d++){
-        v[d] /= av;
-        if(v[d]<limit){
+        v[d] = v[d] / av * initv[d];
+        if(v[d]<limit*initv[d]){
           isover = true;
           break;
         }
@@ -149,6 +161,85 @@ var q2iq=function(q){
   return iq;
 }
 var procgame=function(){
+  //renew q----------------------------
+  //check all the collisions of all the ball and all the dimensions
+  var lefttime = 1;
+  while(lefttime > 0){
+    cq1 = new Array(nball);
+    ct  = new Array(nball); // collision time of ball b and d-th-dimensional wall
+    for(var b=0;b<nball;b++){
+      cq1[b] = new Array(ndim);
+      ct [b] = new Array(ndim);
+      var p = b*2-1;
+      for(var d=0;d<ndim;d++){
+        var v  = ball[b].v[d];
+        var q0 = ball[b].q.clone();
+        var q1 = ball[b].q.clone();
+        q1[d] = q0[d] + v*lefttime;
+        var rq0_d = (q0[d]+1)/2*(maplen-2);
+        var rq1_d = (q1[d]+1)/2*(maplen-2);
+        var iq0_d = Math.floor(rq0_d);
+        var iq1_d = Math.floor(rq1_d);
+        if(iq0_d != iq1_d && q2map(q1)!=p){ /* cross block border && oppo */
+          if(v>0){
+            ct [b][d]=(iq1_d-rq0_d)/(rq1_d-rq0_d);
+          }else{
+            ct [b][d]=(iq0_d-rq1_d)/(rq0_d-rq1_d);
+          }
+          cq1[b][d]=q1;
+        }else{
+          ct[b][d]=+Infinity; //no collision
+        }
+      }
+    }
+    // find the first collision
+    var minb=0; // the first ball
+    var mind=0; // the first dimension
+    var minct=ct[0][0];
+    for(var b=0;b<nball;b++){
+      for(var d=0;d<ndim;d++){
+        if(ct[b][d]<minct){
+          minb=b;
+          mind=d;
+          minct=ct[b][d];
+        }
+      }
+    }
+    //if(minct!=Infinity)console.log("minct="+minct);
+    if(minct==Infinity){ //there is no collision
+      for(var b=0;b<nball;b++){
+        //console.log("ball["+b+"]="+ball[b].toString());
+        for(var d=0;d<ndim;d++){
+          ball[b].q[d] += ball[b].v[d]*lefttime; //use left time all
+        }
+      }
+      lefttime = 0;
+      break;
+    }else{ // there is a collision
+      
+      for(var b=0;b<nball;b++){
+        //console.log("ball["+b+"]="+ball[b].toString());
+        for(var d=0;d<ndim;d++){
+          var dq = ball[b].v[d]*minct;
+          if(b==minb && d==mind) dq *= 0.999; //avoid online
+          ball[b].q[d] += dq; //use minct
+          if(ball[b].q[d] >= +1){ ball[b].q[d] = +1; }
+          if(ball[b].q[d] <= -1){ ball[b].q[d] = -1; }
+        }
+      }
+
+      //reflect
+      ball[minb].v[mind] *= -1; 
+
+      //change
+      var iq1 = q2iq(cq1[minb][mind]);
+      if(map[iq1[3]][iq1[2]][iq1[1]][iq1[0]] != 0){
+        map[iq1[3]][iq1[2]][iq1[1]][iq1[0]] = minb*2-1;
+      }
+      lefttime -= minct;
+    }
+  }//while(lefttime > 0)
+
 }
 // debugout ------------------------
 var isdebugout = false; // false for release
@@ -167,11 +258,11 @@ var maplen;
 var reqdraw = true;
 /* map2color(-1 or +1) returns color of map */
 var map2color  = function(m){
-  return ['#CCCCFF','#FFFFCC'][(m+1)/2];
+  return ['#8888FF','#88FF88'][(m+1)/2];
 }
 /* map2color(-1 or +1) returns color of ball */
 var ball2color = function(b){
-  return map2color(-b);
+  return map2color(-((b*2)-1));
 }
 var Conv=function(){
   this.spm        = canlen/(maplen-2);
@@ -184,18 +275,19 @@ var Conv=function(){
  * sq[dz][dw][1] = screen position y
  * sq[dz][dw][2] = radius weight */
 Conv.prototype.q2sq=function(q){
-  var sw = (q[3]+1)/2*(maplen-2)-0.5;
+  [x,y,z,w] = q;
+  var sw = (w+1)/2*(maplen-2)-0.5;
   var iw = Math.floor(sw);
   var ww0 = Math.sqrt(1-(sw-iw));
   var ww1 = Math.sqrt(1-ww0);
-  var sz = (q[2]+1)/2*(maplen-2)-0.5;
+  var sz = (z+1)/2*(maplen-2)-0.5;
   var iz = Math.floor(sz);
   var wz0 = Math.sqrt(1-(sz-iz));
   var wz1 = Math.sqrt(1-wz0);
-  var sx0 = Math.floor((iw  +(q[0]+1)/2)*this.spm);
-  var sy0 = Math.floor((iz  +(q[1]+1)/2)*this.spm);
-  var sx1 = Math.floor((iw+1+(q[0]+1)/2)*this.spm);
-  var sy1 = Math.floor((iz+1+(q[1]+1)/2)*this.spm);
+  var sx0 = Math.floor((iz  +(x+1)/2)*this.spm);
+  var sy0 = Math.floor((iw  +(y+1)/2)*this.spm);
+  var sx1 = Math.floor((iz+1+(x+1)/2)*this.spm);
+  var sy1 = Math.floor((iw+1+(y+1)/2)*this.spm);
   return [
   /*dw\dz:               0 ,                 1 */
   /*0*/[[sx0, sy0, wz0*ww0],[sx1, sy0, wz1*ww0]],
@@ -205,8 +297,9 @@ Conv.prototype.q2sq=function(q){
 /* [sx0, sy0, sx1, sy1] = conv.iq2sq(iq[d]) 
  *  iq[d]     = d-th-dimensional index d={0,1,2,3}={x,y,z,w} */
 Conv.prototype.iq2sq=function(iq){
-  var sx0 = Math.floor(((iq[2]-1)+(iq[0]-1)*this.invmaplen)*this.spm);
-  var sy0 = Math.floor(((iq[3]-1)+(iq[1]-1)*this.invmaplen)*this.spm);
+  [ix,iy,iz,iw] = iq;
+  var sx0 = Math.floor(((iz-1)+(ix-1)*this.invmaplen)*this.spm);
+  var sy0 = Math.floor(((iw-1)+(iy-1)*this.invmaplen)*this.spm);
   var sx1 = Math.floor(sx0 + this.spm2);
   var sy1 = Math.floor(sy0 + this.spm2);
   return [sx0,sy0,sx1,sy1];
@@ -250,7 +343,7 @@ var procdraw = function(){
   var r = 4;
   for(var b=0;b<nball;b++){
     var sq = conv.q2sq(ball[b].q);
-    console.log("sq="+sq.toString());
+    //console.log("sq="+sq.toString());
     for(var dw=0;dw<2;dw++){
       for(var dz=0;dz<2;dz++){
         ctx.beginPath();
