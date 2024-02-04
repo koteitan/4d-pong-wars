@@ -186,12 +186,12 @@ var Conv=function(){
 Conv.prototype.q2sq=function(q){
   var sw = (q[3]+1)/2*(maplen-2)-0.5;
   var iw = Math.floor(sw);
-  var ww0 = 1-(sw-iw);
-  var ww1 = 1-ww0;
+  var ww0 = Math.sqrt(1-(sw-iw));
+  var ww1 = Math.sqrt(1-ww0);
   var sz = (q[2]+1)/2*(maplen-2)-0.5;
   var iz = Math.floor(sz);
-  var wz0 = 1-(sz-iz);
-  var wz1 = 1-wz0;
+  var wz0 = Math.sqrt(1-(sz-iz));
+  var wz1 = Math.sqrt(1-wz0);
   var sx0 = Math.floor((iw  +(q[0]+1)/2)*this.spm);
   var sy0 = Math.floor((iz  +(q[1]+1)/2)*this.spm);
   var sx1 = Math.floor((iw+1+(q[0]+1)/2)*this.spm);
@@ -257,11 +257,12 @@ var procdraw = function(){
         ctx.fillStyle = ball2color(b);
         ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
         ctx.fill();
-
-        ctx.beginPath();
-        ctx.strokeStyle = "black";
-        ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
-        ctx.stroke();
+        if(true){
+          ctx.beginPath();
+          ctx.strokeStyle = "black";
+          ctx.arc(sq[dw][dz][0], sq[dw][dz][1], r*sq[dw][dz][2], 0, Math.PI*2, false);
+          ctx.stroke();
+        }
       }
     }
   }
