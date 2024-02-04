@@ -24,7 +24,7 @@ var ndim;
 var maplen;
 var blocklen;
 var nball;
-var Ball = new function(_q, _v){
+var Ball = function(_q, _v){
   this.q = _q;
   this.v = _v;
 }
@@ -37,7 +37,7 @@ var initgame=function(){
 
   blocklen = 1/(maplen/2-1);
   if(ndim!=4) throw("ndim must be 4.");
-  var r42vol = 0.5*Math.PI*Math.PI;
+  var count = [0,0];
   map = new Array(maplen);
   for(var w=0;w<maplen;w++){
     map[w] = new Array(maplen);
@@ -45,19 +45,24 @@ var initgame=function(){
       map[w][z] = new Array(maplen);
       for(var y=0;y<maplen;y++){
         map[w][z][y] = new Array(maplen);
-        for(var x=1;x<maplen;x++){
+        for(var x=0;x<maplen;x++){
           map[w][z][y][x] = 0;
           var r2 = x*x+y*y+z*z+w*w;
           var r4 = r2*r2;
-          if(r4*r42vol < 1/2){
+          if(r4 < 12100){ // tuning for 8^4
             map[w][z][y][x]=-1;
+            count[0]++;
           }else{
             map[w][z][y][x]=+1;
+            count[1]++;
           }
         }
       }
     }
   }
+  //console.log("count[0]="+count[0]);
+  //console.log("count[1]="+count[1]);
+  
   //init ball
   nball = 2;
   ball = new Array(nball);
@@ -149,8 +154,8 @@ var iq2sq=function(iq){
   return [sx0,sy0,sx1,sy1];
 }
 var iq2sq_init=function(){
-  _spm        = scrlen/(maplen-2);
-  _spm2       = scrlen/(maplen-2)/(maplen-2);
+  _spm        = canlen/(maplen-2);
+  _spm2       = canlen/(maplen-2)/(maplen-2);
   _invmaplen  =      1/(maplen-2);
 }
 var _spm;
@@ -161,8 +166,8 @@ var q2sq=function(q){
   var sy = Math.floor(((q[1]+1)/2+(q[3]+1)/2*_invmaplen)*_spm);
   return [sx,sy];
 }
-var iq2sq_init=function(){
-  _spm        = scrlen/(maplen-2);
+var q2sq_init=function(){
+  _spm        = canlen/(maplen-2);
   _invmaplen  =      1/(maplen-2);
 }
 //init
